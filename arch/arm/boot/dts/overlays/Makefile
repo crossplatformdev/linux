@@ -88,6 +88,7 @@ dtbo-$(CONFIG_ARCH_BCM2835) += \
 	hd44780-lcd.dtbo \
 	hdmi-backlight-hwhack-gpio.dtbo \
 	hifiberry-adc.dtbo \
+	hifiberry-adc8x.dtbo \
 	hifiberry-amp.dtbo \
 	hifiberry-amp100.dtbo \
 	hifiberry-amp3.dtbo \
@@ -138,6 +139,8 @@ dtbo-$(CONFIG_ARCH_BCM2835) += \
 	imx378.dtbo \
 	imx462.dtbo \
 	imx477.dtbo \
+	imx500.dtbo \
+	imx500-pi5.dtbo \
 	imx519.dtbo \
 	imx708.dtbo \
 	interludeaudio-analog.dtbo \
