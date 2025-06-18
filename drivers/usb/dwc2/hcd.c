@@ -676,19 +676,7 @@ static void dwc2_hc_init(struct dwc2_hsotg *hsotg, struct dwc2_host_chan *chan)
 		hcchar |= HCCHAR_EPDIR;
 	if (chan->speed == USB_SPEED_LOW)
 		hcchar |= HCCHAR_LSPDDEV;
-
-	/*
-	 * Masquerading Interrupt split transfers as Control puts the transfer
-	 * into the non-periodic handler in the hub. This stops the hub
-	 * dropping complete-split data in the microframe after a CSPLIT
-	 * should have arrived, improving resilience to host IRQ latency.
-	 * Devices are none the wiser - the handshake tokens are the same.
-	 */
-	if (chan->do_split && chan->ep_type == USB_ENDPOINT_XFER_INT)
-		hcchar |= USB_ENDPOINT_XFER_CONTROL << HCCHAR_EPTYPE_SHIFT & HCCHAR_EPTYPE_MASK;
-	else
-		hcchar |= chan->ep_type << HCCHAR_EPTYPE_SHIFT & HCCHAR_EPTYPE_MASK;
-
+	hcchar |= chan->ep_type << HCCHAR_EPTYPE_SHIFT & HCCHAR_EPTYPE_MASK;
 	hcchar |= chan->max_packet << HCCHAR_MPS_SHIFT & HCCHAR_MPS_MASK;
 	dwc2_writel(hsotg, hcchar, HCCHAR(hc_num));
 	if (dbg_hc(chan)) {
@@ -3804,17 +3792,12 @@ static int dwc2_hcd_is_status_changed(struct dwc2_hsotg *hsotg, int port)
 int dwc2_hcd_get_frame_number(struct dwc2_hsotg *hsotg)
 {
 	u32 hfnum = dwc2_readl(hsotg, HFNUM);
-	u32 hprt0 = dwc2_readl(hsotg, HPRT0);
 
 #ifdef DWC2_DEBUG_SOF
 	dev_vdbg(hsotg->dev, "DWC OTG HCD GET FRAME NUMBER %d\n",
 		 (hfnum & HFNUM_FRNUM_MASK) >> HFNUM_FRNUM_SHIFT);
 #endif
-	/* HS root port counts microframes, not frames */
-	if ((hprt0 & HPRT0_SPD_MASK) >> HPRT0_SPD_SHIFT == HPRT0_SPD_HIGH_SPEED)
-		return (hfnum & HFNUM_FRNUM_MASK) >> (3 + HFNUM_FRNUM_SHIFT);
-	else
-		return (hfnum & HFNUM_FRNUM_MASK) >> HFNUM_FRNUM_SHIFT;
+	return (hfnum & HFNUM_FRNUM_MASK) >> HFNUM_FRNUM_SHIFT;
 }
 
 int dwc2_hcd_get_future_frame_number(struct dwc2_hsotg *hsotg, int us)
@@ -4560,8 +4543,13 @@ unlock:
 static int _dwc2_hcd_get_frame_number(struct usb_hcd *hcd)
 {
 	struct dwc2_hsotg *hsotg = dwc2_hcd_to_hsotg(hcd);
+	u32 hprt0 = dwc2_readl(hsotg, HPRT0);
 
-	return dwc2_hcd_get_frame_number(hsotg);
+	/* HS root port counts microframes, not frames */
+	if ((hprt0 & HPRT0_SPD_MASK) >> HPRT0_SPD_SHIFT == HPRT0_SPD_HIGH_SPEED)
+		return dwc2_hcd_get_frame_number(hsotg) >> 3;
+	else
+		return dwc2_hcd_get_frame_number(hsotg);
 }
 
 static void dwc2_dump_urb_info(struct usb_hcd *hcd, struct urb *urb,
